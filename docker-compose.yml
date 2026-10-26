@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: hrmsai
+      POSTGRES_USER: hrmsai
+      POSTGRES_PASSWORD: hrmsai_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - hrmsai-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrmsai -d hrmsai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://hrmsai:hrmsai_dev_password@db:5432/hrmsai
+      APP_ENV: production
+      AUTO_CREATE_SCHEMA: "false"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your environment before starting the API}
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  hrmsai-postgres:
